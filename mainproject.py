@@ -51,7 +51,7 @@ class main:
             self.c.execute('''CREATE TABLE IF NOT EXISTS orders(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 User_orders varchar(30) NOT NULL,
-                orders_ID TEXT NOT NULL,
+                orders_lottery_num TEXT NOT NULL,
                 amount_orders INTEGER NOT NULL,
                 price_orders INTEGER NOT NULL,
                 Cash INTEGER NOT NULL,
@@ -340,8 +340,8 @@ class main:
                     type_lottery = 'หวยเดี่ยว'  # สามารถเปลี่ยนแปลงได้
                     
                     # ตรวจสอบว่า num_id ถูกกำหนดค่า
-                    num_id = f"123456"  # กำหนดหมายเลขล็อตเตอรี่
-                    if not num_id:  # ถ้า num_id เป็น NULL จะมีการแจ้งเตือน
+                    num_lottery = f"123456"  # กำหนดหมายเลขล็อตเตอรี่
+                    if not num_lottery:  # ถ้า num_id เป็น NULL จะมีการแจ้งเตือน
                         raise ValueError("num_id cannot be NULL")
 
                     self.price = 80  # ราคาเป็นตัวอย่าง
@@ -350,7 +350,7 @@ class main:
 
                     # เพิ่มข้อมูลลงในฐานข้อมูล (ไม่รวม id)
                     self.c.execute("INSERT INTO lottery(type_lottery, num_id, price, amount, img_lottery) VALUES (?, ?, ?, ?, ?)",
-                                (type_lottery, num_id, self.price, amount, img_binary_data))
+                                (type_lottery, self.num_id, self.price, amount, img_binary_data))
             
                 # ยืนยันการเปลี่ยนแปลงในฐานข้อมูล
                 self.conn.commit()
@@ -659,7 +659,7 @@ class main:
 
         # ดึงข้อมูลภาพและเลขหวยจากฐานข้อมูล
         try:    
-            self.c.execute('SELECT img_lottery,amount,price,type_lottery FROM lottery')
+            self.c.execute('SELECT img_lottery,amount,price,type_lottery,num_id  FROM lottery')
             self.alllottery_data = self.c.fetchall()
         except Exception as e:
             print(f"Error fetching data: {e}")
@@ -684,7 +684,7 @@ class main:
         self.c = self.conn.cursor()
         
         try:
-            self.c.execute("SELECT img_lottery,amount,price,type_lottery FROM lottery WHERE type_lottery ='หวยคู่' ")
+            self.c.execute("SELECT img_lottery,amount,price,type_lottery,num_id  FROM lottery WHERE type_lottery ='หวยคู่' ")
             self.pairlottery_data = self.c.fetchall()
         except Exception as e:
             print(f"Error fetching data: {e}")
@@ -711,7 +711,7 @@ class main:
         self.c = self.conn.cursor()
         
         try:
-            self.c.execute("SELECT img_lottery,amount,price, type_lottery FROM lottery WHERE type_lottery ='หวยเดี่ยว' ")
+            self.c.execute("SELECT img_lottery,amount,price, type_lottery,num_id FROM lottery WHERE type_lottery ='หวยเดี่ยว' ")
             self.oddlottery_data = self.c.fetchall()
         except Exception as e:
             print(f"Error fetching data: {e}")
@@ -724,14 +724,13 @@ class main:
         self.store_loterry(self.oddlottery_data)
         
     
-    def store_loterry(self,typelot):
-        
+    def store_loterry(self, typelot):
         # แสดงข้อมูลภาพและ Combobox ในหน้า
-        index = 0
+        index = 0  # แถว table
         for i in range(len(typelot)):  # กำหนดจำนวนแถว
             for j in range(4):  # กำหนดจำนวนคอลัมน์
                 if index < len(typelot):
-                    img_data,amount_data,price_data, typelot_data= typelot[index]
+                    img_data, amount_data, price_data, typelot_data,num_lottery = typelot[index]
 
                     # แปลงข้อมูล BLOB เป็นภาพ
                     img1 = Image.open(io.BytesIO(img_data))
@@ -740,7 +739,7 @@ class main:
 
                     # สร้างกรอบสำหรับสินค้า
                     frame_item = ctk.CTkFrame(self.frame_item_con, width=226, height=180, corner_radius=10, fg_color='#2b2b2b')
-                    frame_item.grid(row =i,column =j,padx =8,pady =10)
+                    frame_item.grid(row=i, column=j, padx=8, pady=10)
                     self.frame_item_con.configure(width=980, height=1920)
 
                     # ใส่รูปภาพในกรอบสินค้า
@@ -753,7 +752,7 @@ class main:
                     typelot_label.place(x=65, y=5)
 
                     # สร้าง Combobox สำหรับเลือกจำนวน
-                    self.amount_combo = ctk.CTkComboBox(frame_item,
+                    amount_combo = ctk.CTkComboBox(frame_item,
                                                     values=[str(amount_data)],
                                                     width=50, height=23,
                                                     corner_radius=5, border_width=0,
@@ -764,47 +763,56 @@ class main:
                                                     dropdown_text_color='#2b2b2b',
                                                     button_color='white',
                                                     button_hover_color='#ebe8e8')
-                    self.amount_combo.place(x=12, y=148)
-                    
-                    self.cartPick_image = Image.open(r'D:\python_finalproject\img\icon\white\26.png')  
-                    self.cartPick_img_icon = ctk.CTkImage(self.cartPick_image, size=(30, 20)) 
+                    amount_combo.place(x=12, y=148)
+
+                    # ปุ่มหยิบใส่ตระกร้า
+                    cartPick_image = Image.open(r'D:\python_finalproject\img\icon\white\26.png')
+                    cartPick_img_icon = ctk.CTkImage(cartPick_image, size=(30, 20))
 
                     pick_btn = ctk.CTkButton(frame_item, text='หยิบใส่ตระกร้า',
-                                             image=self.cartPick_img_icon,
-                                             compound=RIGHT,
-                                             anchor='w',
+                                            image=cartPick_img_icon,
+                                            compound=tk.RIGHT,
+                                            anchor='w',
                                             font=('Prompt', 12),
                                             width=45, height=16,
                                             border_width=0,
                                             bg_color='#2b2b2b',
                                             fg_color='#2b2b2b',
-                                            hover_color='black'
-                                            ,command=self.add_cart)
+                                            hover_color='black',
+                                            command=lambda n=num_lottery, a=amount_combo, p=price_data: self.add_cart(n, a.get(), p))
                     pick_btn.place(x=70, y=145)
 
                 index += 1  # เพิ่มตัวนับรูปภาพ
-        self.conn.close()
-        
-    def add_cart(self):
-        self.conn =sqlite3.connect('data.db')
-        self.c =self.conn.cursor()
-        amout = self.amount_combo.get()
 
-        self.c.execute('SELECT * FROM users WHERE username = ? ',self.username)
-        username = self.c.fetchone()
-        d = (username,amout,self.price)
-        
-        self.c.execute('INSERT INTO orders(User_orders,amont_orders,price_orders,) VALUES (?,?,?)',d)
-        self.conn.commit()  
-              
         self.conn.close()
+
+    def add_cart(self, num_lottery, amount_selected, price_data):
+        # เชื่อมต่อกับฐานข้อมูล
+        self.conn = sqlite3.connect('data.db')
+        self.c = self.conn.cursor()
+
+        try:
+            # แปลง amount_selected เป็นจำนวนเต็ม
+            amount = int(amount_selected)
+            
+            # สมมติว่า self.username คือชื่อผู้ใช้ปัจจุบัน
+            username = self.username  # เปลี่ยนให้เหมาะสมตามที่คุณกำหนด
+
+            # เพิ่มข้อมูลลงในฐานข้อมูล
+            self.c.execute('INSERT INTO orders (User_orders, orders_lottery_num, amount_orders, price_orders,cash,status) VALUES (?, ?, ?, ?,?,?)',
+                        (username, num_lottery, amount, price_data * amount,0,'ยังไม่จ่าย'))  # คูณราคาด้วยจำนวนที่เลือก
+
+            # ยืนยันการเปลี่ยนแปลงในฐานข้อมูล
+            self.conn.commit()
+            tkinter.messagebox.showinfo("Success", "เพิ่มล็อตเตอรี่ลงในตะกร้าเรียบร้อยแล้ว!")
+
+        except Exception as e:
+            print(f"Error adding to cart: {e}")
+        finally:
+            self.conn.close()
+
+
         
-        
-        
-        
-        
-        
-        pass        
 
     def cart_page(self):
         self.changeColor_icon(self.cart_page,"cart",self.cart_btn)
